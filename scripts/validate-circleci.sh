@@ -28,31 +28,21 @@ echo "🔍 Testing project type detection..."
 
 # Initialize project type detection variables
 node_project_found=false
-nodejs_project_found=false
-if [ -f "package.json" ]; then
-    nodejs_project_found=true
-fi
-
 python_files_found=false
 generic_project_found=false
 
 # Test Node.js detection
 echo "Testing Node.js project detection..."
-if [ "$nodejs_project_found" = true ]; then
+if [ -f "package.json" ]; then
     echo "✅ Node.js project detected (package.json found)"
     node_project_found=true
-python_files_found=false
-if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
-    python_files_found=true
-fi
-
 else
     echo "ℹ️  No package.json found - Node.js job will be skipped"
 fi
 
 # Test Python detection
 echo "Testing Python project detection..."
-if [ "$python_files_found" = true ]; then
+if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
     echo "✅ Python project detected"
     python_files_found=true
 else
@@ -95,6 +85,6 @@ echo "   circleci local execute --job <job-name>"
 echo ""
 echo "📚 Available jobs:"
 echo "   - build-and-test-node"
-echo "   - build-and-test-python" 
+echo "   - build-and-test-python"
 echo "   - build-and-test-generic"
 echo "   - say-hello"
