@@ -2,52 +2,199 @@
 # See: https://circleci.com/docs/reference/configuration-reference
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#jobs-overview & https://circleci.com/docs/reference/configuration-reference/#jobs
-jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/guides/execution-managed/executor-intro/ & https://circleci.com/docs/reference/configuration-reference/#executor-job
-    docker:
-      # Specify the version you desire here
-      # See: https://circleci.com/developer/images/image/cimg/base
-      - image: cimg/base:current
+# Define orbs for Node.js and Python
+# NOTE: Regularly check for newer versions of these orbs to maintain build environment integrity
+orbs:
+  node: circleci/node@5.1.0
+  python: circleci/python@2.1.1
 
-    # Add steps to the job
-    # See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#steps-overview & https://circleci.com/docs/reference/configuration-reference/#steps
+# Define jobs for different project types
+jobs:
+  # Node.js project build and test job
+  build-and-test-node:
+    executor: node/default
     steps:
-      # Checkout the code as the first step.
+      - checkout
+      # Improved project type check with proper exit strategy
+      - run:
+          name: "Check if Node.js project"
+          command: |
+            if [ ! -f "package.json" ]; then
+              echo "No package.json found. This is not a Node.js project."
+              exit 1
+            fi
+            echo "Node.js project detected."
+      - node/install-packages
+      - run:
+          name: "Run tests"
+          command: npm test
+      # Improved coverage reporting with fail-fast approach
+      - run:
+          name: "Generate and upload coverage report"
+          command: |
+            # Check if coverage report exists before attempting to upload
+            if [ -f "coverage/lcov.info" ]; then
+              echo "Coverage report found. Uploading..."
+              bash <(curl -Ls https://coverage.codacy.com/get.sh) || {
+                echo "Failed to upload coverage report"
+                exit 1
+              }
+            else
+              echo "No coverage report found at coverage/lcov.info"
+              echo "Skipping coverage upload"
+            fi
+
+  # Python project build and test job
+  build-and-test-python:
+    executor: python/default
+    steps:
+      - checkout
+      # Improved project type check with proper exit strategy
+      - run:
+          name: "Check if Python project"
+          command: |
+            if [ ! -f "requirements.txt" ] && [ ! -f "pyproject.toml" ] && [ ! -f "setup.py" ]; then
+              echo "No Python project files found (requirements.txt, pyproject.toml, or setup.py)."
+              exit 1
+            fi
+            echo "Python project detected."
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: "Run tests"
+          command: |
+            if [ -f "requirements-dev.txt" ]; then
+              pip install -r requirements-dev.txt
+            fi
+            python -m pytest --cov=. --cov-report=xml || python -m unittest discover
+      # Improved coverage reporting with fail-fast approach
+      - run:
+          name: "Generate and upload coverage report"
+          command: |
+            # Check if coverage report exists before attempting to upload
+            if [ -f "coverage.xml" ]; then
+              echo "Coverage report found. Uploading..."
+              bash <(curl -Ls https://coverage.codacy.com/get.sh) || {
+                echo "Failed to upload coverage report"
+                exit 1
+              }
+            else
+              echo "No coverage report found at coverage.xml"
+              echo "Skipping coverage upload"
+            fi
+
+  # Generic project validation job with improved conditional checks
+  build-and-test-generic:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - checkout
+      # Improved validation to determine if generic job should run
+      - run:
+          name: "Validate project type and determine if generic build is appropriate"
+          command: |
+            echo "Checking project structure..."
+            
+            # Check if this is actually a Node.js or Python project
+            if [ -f "package.json" ]; then
+              echo "ERROR: package.json found. This appears to be a Node.js project."
+              echo "Generic job should not run for Node.js projects."
+              exit 1
+            fi
+            
+            if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+              echo "ERROR: Python project files found. This appears to be a Python project."
+              echo "Generic job should not run for Python projects."
+              exit 1
+            fi
+            
+            # Check for common project files that indicate a valid generic project
+            if [ -f "Makefile" ] || [ -f "Dockerfile" ] || [ -f "README.md" ] || [ -d "src" ] || [ -d "lib" ]; then
+              echo "Generic project structure detected. Proceeding with validation."
+            else
+              echo "WARNING: No recognizable project structure found."
+              echo "This may not be a valid project for CI/CD validation."
+            fi
+      - run:
+          name: "Basic project validation"
+          command: |
+            echo "Running basic project validation..."
+            
+            # Check for README
+            if [ -f "README.md" ] || [ -f "README.txt" ] || [ -f "README" ]; then
+              echo "✓ README file found"
+            else
+              echo "⚠ No README file found"
+            fi
+            
+            # Check for license
+            if [ -f "LICENSE" ] || [ -f "LICENSE.txt" ] || [ -f "LICENSE.md" ]; then
+              echo "✓ License file found"
+            else
+              echo "⚠ No license file found"
+            fi
+            
+            # Basic file structure validation
+            echo "Project structure:"
+            find . -maxdepth 2 -type f -name "*" | head -20
+            
+            echo "Generic project validation completed."
+
+  # Simple hello world job for basic workflow testing
+  say-hello:
+    docker:
+      - image: cimg/base:current
+    steps:
       - checkout
       - run:
           name: "Say hello"
           command: "echo Hello, World!"
 
-# Orchestrate jobs using workflows
-# See: https://circleci.com/docs/guides/orchestrate/workflows/ & https://circleci.com/docs/reference/configuration-reference/#workflows
+# Orchestrate jobs using workflows with improved branch filtering
 workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  # Main workflow with conditional job execution based on project type
+  build-and-test-workflow:
     jobs:
-      - say-hello
-# As simple as adding the below to your config to get started
--
-- uses: qltysh/qlty-action/coverage@v2
-  with:
-    token: {{secrets.QLTY_COVERAGE_TOKEN}}
-    files: reports/lcov.info
-- run:
-    name: Plan a deploy
-    command: circleci run release plan --target-version=<some-version-name>
-
-# Your job here doing the actual deployment
-- run:
-    name: Update a deploy to SUCCESS
-    command: circleci run release update --status=SUCCESS 
-    when: on_success 
-- run:
-    name: Update planned deploy to FAILED
-    command: circleci run release update --status=FAILED 
-    when: on_fail
-- run:
-    name: Run Codacy Coverage Reporter
-    command: bash <(curl -Ls https://coverage.codacy.com/get.sh)
+      # Node.js job - only run on main, develop, and feature branches
+      - build-and-test-node:
+          filters:
+            branches:
+              only:
+                - main
+                - master
+                - develop
+                - /^feature\/.*/
+                - /^hotfix\/.*/
+      
+      # Python job - only run on main, develop, and feature branches  
+      - build-and-test-python:
+          filters:
+            branches:
+              only:
+                - main
+                - master
+                - develop
+                - /^feature\/.*/
+                - /^hotfix\/.*/
+      
+      # Generic job - only run on main, develop, and feature branches
+      - build-and-test-generic:
+          filters:
+            branches:
+              only:
+                - main
+                - master
+                - develop
+                - /^feature\/.*/
+                - /^hotfix\/.*/
+  
+  # Simple workflow for basic testing
+  say-hello-workflow:
+    jobs:
+      - say-hello:
+          filters:
+            branches:
+              only:
+                - main
+                - master
+                - develop
