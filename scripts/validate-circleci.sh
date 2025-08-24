@@ -28,12 +28,17 @@ echo "🔍 Testing project type detection..."
 
 # Initialize project type detection variables
 node_project_found=false
+nodejs_project_found=false
+if [ -f "package.json" ]; then
+    nodejs_project_found=true
+fi
+
 python_files_found=false
 generic_project_found=false
 
 # Test Node.js detection
 echo "Testing Node.js project detection..."
-if [ -f "package.json" ]; then
+if [ "$nodejs_project_found" = true ]; then
     echo "✅ Node.js project detected (package.json found)"
     node_project_found=true
 python_files_found=false
