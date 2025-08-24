@@ -36,10 +36,8 @@ fi
 
 # Test Python detection
 echo "Testing Python project detection..."
-python_files_found=false
 if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
     echo "✅ Python project detected"
-    python_files_found=true
 else
     echo "ℹ️  No Python project files found - Python job will be skipped"
 fi
