@@ -36,13 +36,18 @@ echo "Testing Node.js project detection..."
 if [ -f "package.json" ]; then
     echo "✅ Node.js project detected (package.json found)"
     node_project_found=true
+python_files_found=false
+if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+    python_files_found=true
+fi
+
 else
     echo "ℹ️  No package.json found - Node.js job will be skipped"
 fi
 
 # Test Python detection
 echo "Testing Python project detection..."
-if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+if [ "$python_files_found" = true ]; then
     echo "✅ Python project detected"
     python_files_found=true
 else
