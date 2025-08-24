@@ -26,10 +26,16 @@ fi
 # Check project type detection logic
 echo "🔍 Testing project type detection..."
 
+# Initialize project type detection variables
+node_project_found=false
+python_files_found=false
+generic_project_found=false
+
 # Test Node.js detection
 echo "Testing Node.js project detection..."
 if [ -f "package.json" ]; then
     echo "✅ Node.js project detected (package.json found)"
+    node_project_found=true
 else
     echo "ℹ️  No package.json found - Node.js job will be skipped"
 fi
@@ -38,6 +44,7 @@ fi
 echo "Testing Python project detection..."
 if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
     echo "✅ Python project detected"
+    python_files_found=true
 else
     echo "ℹ️  No Python project files found - Python job will be skipped"
 fi
@@ -46,6 +53,7 @@ fi
 echo "Testing generic project validation..."
 if [ -f "Makefile" ] || [ -f "Dockerfile" ] || [ -f "README.md" ] || [ -d "src" ] || [ -d "lib" ]; then
     echo "✅ Generic project structure detected"
+    generic_project_found=true
 else
     echo "⚠️  Limited generic project structure found"
 fi
@@ -62,8 +70,13 @@ fi
 echo ""
 echo "📊 Validation Summary:"
 echo "- Configuration syntax: ✅ Valid"
-echo "- Project type detection: ✅ Working"
+echo "- Project type detection:"
+echo "  - Node.js: $([ "$node_project_found" = true ] && echo "✅ Detected" || echo "❌ Not found")"
+echo "  - Python: $([ "$python_files_found" = true ] && echo "✅ Detected" || echo "❌ Not found")"
+echo "  - Generic: $([ "$generic_project_found" = true ] && echo "✅ Detected" || echo "❌ Limited structure")"
 echo "- Coverage setup: ✅ Ready"
+echo ""
+echo "🎯 Project Types Found: $([ "$node_project_found" = true ] && echo -n "Node.js ")$([ "$python_files_found" = true ] && echo -n "Python ")$([ "$generic_project_found" = true ] && echo -n "Generic ")"
 echo ""
 echo "🎉 CircleCI configuration validation completed successfully!"
 echo ""
