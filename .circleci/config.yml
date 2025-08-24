@@ -30,7 +30,10 @@ workflows:
     jobs:
       - say-hello
 # As simple as adding the below to your config to get started
-
+- uses: qltysh/qlty-action/coverage@v2
+  with:
+    token: {{secrets.QLTY_COVERAGE_TOKEN}}
+    files: reports/lcov.info
 - run:
     name: Plan a deploy
     command: circleci run release plan --target-version=<some-version-name>
